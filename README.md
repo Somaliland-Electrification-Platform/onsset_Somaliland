@@ -10,11 +10,11 @@ onsset : Open Source Spatial Electrification Tool
 # Scope
 
 This repository contains the source code of the Open Source Spatial Electrification Tool
-([OnSSET](http://www.onsset.org/)).
+([OnSSET](http://www.onsset.org/)) developed for Somaliland.
 
 
 The repository also includes sample test files available in ```.\test_data```
-and sample output files available in ```.\sample_output```.
+and sample output files available in ```.\sample_output```. Sample input files for Somaliland are included in ```.\Somaliland_test_input_data.zip```
 
 ## Installation
 
@@ -57,4 +57,4 @@ python setup.py develop
 ## Contact
 For more information regarding the tool, its functionality and implementation
 please visit https://www.onsset.org or contact the development team
-at seap@desa.kth.se.
+at the World Bank.
