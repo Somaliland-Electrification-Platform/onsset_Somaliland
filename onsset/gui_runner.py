@@ -17,6 +17,7 @@ choice = int(input('Enter 1 to prepare/calibrate the GIS input file, 2 to run sc
 
 messagebox.showinfo('OnSSET', 'Open the specs file')
 specs_path = filedialog.askopenfilename()
+print(specs_path)
 
 specs = pd.read_excel(specs_path, index_col=0)
 
@@ -37,8 +38,10 @@ if choice == 1:
 elif choice == 2:
     messagebox.showinfo('OnSSET', 'Open the csv file with calibrated GIS data')
     calibrated_csv_path = filedialog.askopenfilename()
+    print(calibrated_csv_path)
     messagebox.showinfo('OnSSET', 'Browse to RESULTS folder to save outputs')
     results_folder = filedialog.askdirectory()
+
     messagebox.showinfo('OnSSET', 'Browse to SUMMARIES folder and name the scenario to save outputs')
     summary_folder = filedialog.askdirectory()
 

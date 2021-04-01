@@ -36,7 +36,6 @@ setuptools.setup(
         'tk',
         'folium',
         'branca'
-
     ],
     classifiers=[
         'Programming Language :: Python :: 3',
