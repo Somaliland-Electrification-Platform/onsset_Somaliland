@@ -1065,7 +1065,7 @@ class SettlementProcessor:
 
     def grid_option(self, option, intensification_dist, year, distribution_om, distribution_losses, grid_losses,
                     connection_cost_per_household, grid_power_plants_capital_cost, start_year,
-                    grid_generation_cost, split_HV_transmission_cost, national_HV_transmission_cost):
+                    grid_generation_cost, national_HV_transmission_cost):
 
         if (option == 1) & (intensification_dist == 0):
             self.df[SET_MV_DIST_CURRENT] = 999
@@ -2468,8 +2468,7 @@ class SettlementProcessor:
         self.df.loc[self.df[SET_ELEC_FINAL_CODE + "{}".format(year)] == 9, SET_NEW_CAPACITY + "{}".format(year)] = \
             (self.df[SET_ENERGY_PER_CELL + "{}".format(year)] * mg_wind_hybrid_capacity)
 
-    def online_summaries(self, start_year, intermediate_year, end_year, option, split_HV_backbone_investment,
-                          national_HV_backbone_investment, intensification):
+    def online_summaries(self, start_year, intermediate_year, end_year, option, national_HV_backbone_investment, intensification):
         self.df['Buildings' + '{}'.format(start_year)] = np.round(self.df['Buildings'])
         self.df['Buildings' + '{}'.format(intermediate_year)] = np.round(
             self.df['Buildings'] * self.df['Pop' + '{}'.format(intermediate_year)] / self.df[
@@ -2509,11 +2508,12 @@ class SettlementProcessor:
         if option == 2:
             self.df.loc[(self.df['Admin_1'] == 'Transmission_lines'), SET_ELEC_FINAL_CODE + "{}".format(end_year)] = 1
             self.df.loc[
-                (self.df['Admin_1'] == 'Transmission_lines'), SET_INVESTMENT_COST + "{}".format(end_year)] = split_HV_backbone_investment * 1000000
+                (self.df['Admin_1'] == 'Transmission_lines'), SET_INVESTMENT_COST + "{}".format(
+                    end_year)] = national_HV_backbone_investment * 1000000
         elif option == 3:
             self.df.loc[(self.df['Admin_1'] == 'Transmission_lines'), SET_ELEC_FINAL_CODE + "{}".format(end_year)] = 1
             self.df.loc[
-                (self.df['Admin_1'] == 'Transmission_lines'), SET_INVESTMENT_COST + "{}".format(end_year)] = national_HV_backbone_investment * 1000000
+                (self.df['Admin_1'] == 'Transmission_lines'), SET_INVESTMENT_COST + "{}".format(end_year)] = split_HV_backbone_investment * 1000000
 
         del self.df['GridCellAreaTemp']
         #del self.df['Wind_TD_Investment']
