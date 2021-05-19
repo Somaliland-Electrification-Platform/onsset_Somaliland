@@ -1862,8 +1862,8 @@ class SettlementProcessor:
                                   inverter_cost, pv_life, diesel_life, inverter_life, min_pop):
 
         ##TODO change path based on method run
-        path_7 = os.path.join('../onsset/Supplementary_files', 'Somalia_PV.csv')
-        #path_7 = os.path.join('../Supplementary_files', 'Somalia_PV.csv')
+        path_7 = os.path.join('../onsset_Somaliland/Supplementary_files', 'Somaliland_PV.csv')
+        #path_7 = os.path.join('../Supplementary_files', 'Somaliland_PV.csv')
 
         ghi_curve_7, temp_7 = read_environmental_data(path_7)
 
