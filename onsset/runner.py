@@ -64,8 +64,8 @@ def calibration(specs_path, csv_path, specs_path_calib, calibrated_csv_path):
     # within the maxiumum distance from main roads are considered as urban areas)
     other_urban_areas_pop = 1500  # Minimum population threshold
     other_urban_areas_road_dist = 5  # Max road distance thershold (km)
-    urban_pop_growth_rate = 0.029  ### Write the annual population growth rate expected in urban areas (e.g. 0.029 for 2.9%)
-    rural_pop_growth_rate = 0.029  ### Write the annual population growth rate expected in rural areas (e.g. 0.029 for 2.9%)
+    urban_pop_growth_rate = 0.029  ### RUN_PARAM Write the annual population growth rate expected in urban areas (e.g. 0.029 for 2.9%)
+    rural_pop_growth_rate = 0.029  ### RUN_PARAM Write the annual population growth rate expected in rural areas (e.g. 0.029 for 2.9%)
 
     pop_modelled, urban_modelled = \
         onsseter.calibrate_current_pop_and_urban(pop_actual, major_urban_centers_pop, other_urban_areas_pop,
@@ -75,7 +75,7 @@ def calibration(specs_path, csv_path, specs_path_calib, calibrated_csv_path):
     onsseter.project_pop_and_urban(urban_pop_growth_rate, rural_pop_growth_rate,
                                    start_year, end_year, intermediate_year)
 
-    mini_grid_electification_ratio = 0.67  # Share of households in areas with existing mini-grids considered to be electrified
+    mini_grid_electification_ratio = 0.95  # Share of households in areas with existing mini-grids considered to be electrified
 
     elec_modelled, rural_elec_ratio, urban_elec_ratio = onsseter.mini_grid_electrified(mini_grid_electification_ratio, start_year)
 
@@ -131,7 +131,7 @@ def scenario(specs_path, calibrated_csv_path, results_folder, summary_folder):
         five_year_target = scenario_parameters.iloc[0]['5YearTarget']  # Tarrget electrification rate in 2025
 
         grid_price = scenario_parameters.iloc[grid_index]['GridGenerationCost']  # Generation cost + HV transmission cost (USD/kWh)
-        grid_option = scenario_parameters.iloc[grid_index]['GridOption']  # 1 = MG and SA only, 2 = split backbone, 3 = national backbone
+        grid_option = scenario_parameters.iloc[grid_index]['GridOption']  # 1 = MG and SA only, 2 = national backbone
 
         threshold = scenario_parameters.iloc[intensification_index]['Threshold']  # Maximum cost for forced grid extension (USD/household)
         auto_intensification = scenario_parameters.iloc[intensification_index]['AutoIntensificationKM'] # Forced grid extension distance (km)
@@ -288,7 +288,6 @@ def scenario(specs_path, calibrated_csv_path, results_folder, summary_folder):
                                              connection_cost_per_household=20,
                                              grid_power_plants_capital_cost=2000, start_year=start_year,
                                              grid_generation_cost=grid_price,
-                                             split_HV_transmission_cost=0,
                                              national_HV_transmission_cost=0)
 
             if year == 2025:
