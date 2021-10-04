@@ -58,14 +58,14 @@ def calibration(specs_path, csv_path, specs_path_calib, calibrated_csv_path):
     end_year = int(specs_data.loc[0, SPE_END_YEAR])
     intermediate_year = int(specs_data.loc[0, 'IntermediateYear'])
 
-    major_urban_centers_pop = 10000  # Minimum population threshold
+    major_urban_centers_pop = 5000  # Minimum population threshold
 
     # Other urban areas threshold (all settlements with a population above the threshold and
     # within the maxiumum distance from main roads are considered as urban areas)
-    other_urban_areas_pop = 1500  # Minimum population threshold
-    other_urban_areas_road_dist = 5  # Max road distance thershold (km)
-    urban_pop_growth_rate = 0.029  ### RUN_PARAM Write the annual population growth rate expected in urban areas (e.g. 0.029 for 2.9%)
-    rural_pop_growth_rate = 0.029  ### RUN_PARAM Write the annual population growth rate expected in rural areas (e.g. 0.029 for 2.9%)
+    other_urban_areas_pop = 100  # Minimum population threshold
+    other_urban_areas_road_dist = 1.5  # RUN_PARAM This was updated, now using travel hours (h) in order to classify small settlements near big towns as peri-urban
+    urban_pop_growth_rate = 0.0293  ### RUN_PARAM Write the annual population growth rate expected in urban areas (e.g. 0.029 for 2.9%)
+    rural_pop_growth_rate = 0.0293  ### RUN_PARAM Write the annual population growth rate expected in rural areas (e.g. 0.029 for 2.9%)
 
     pop_modelled, urban_modelled = \
         onsseter.calibrate_current_pop_and_urban(pop_actual, major_urban_centers_pop, other_urban_areas_pop,
@@ -75,7 +75,7 @@ def calibration(specs_path, csv_path, specs_path_calib, calibrated_csv_path):
     onsseter.project_pop_and_urban(urban_pop_growth_rate, rural_pop_growth_rate,
                                    start_year, end_year, intermediate_year)
 
-    mini_grid_electification_ratio = 0.95  # Share of households in areas with existing mini-grids considered to be electrified
+    mini_grid_electification_ratio = 0.88  # RUN_PARAM Share of households in areas with existing mini-grids considered to be electrified
 
     elec_modelled, rural_elec_ratio, urban_elec_ratio = onsseter.mini_grid_electrified(mini_grid_electification_ratio, start_year)
 
@@ -126,7 +126,7 @@ def scenario(specs_path, calibrated_csv_path, results_folder, summary_folder):
         intensification_index = scenario_info.iloc[scenario]['Intensification']
         dist_costs = scenario_info.iloc[scenario]['Distribution_costs']
 
-        prioritization = 5
+        #prioritization = 5
 
         five_year_target = scenario_parameters.iloc[0]['5YearTarget']  # Tarrget electrification rate in 2025
 
@@ -135,6 +135,13 @@ def scenario(specs_path, calibrated_csv_path, results_folder, summary_folder):
 
         threshold = scenario_parameters.iloc[intensification_index]['Threshold']  # Maximum cost for forced grid extension (USD/household)
         auto_intensification = scenario_parameters.iloc[intensification_index]['AutoIntensificationKM'] # Forced grid extension distance (km)
+
+        if auto_intensification > 0:
+            prioritization = 2
+        else:
+            prioritization = 5
+
+
 
         rural_demand_low = scenario_parameters.iloc[tier_index]['RuralTargetLow']  # kWh/household/year
         rural_demand_high = scenario_parameters.iloc[tier_index]['RuralTargetHigh']  # kWh/household/year
@@ -187,26 +194,26 @@ def scenario(specs_path, calibrated_csv_path, results_folder, summary_folder):
 
         mg_pv_hybrid_calc = Technology(om_of_td_lines=0.02,
                                        distribution_losses=0.05,
-                                       connection_cost_per_hh=20,
+                                       connection_cost_per_hh=100,
                                        capacity_factor=0.5,
-                                       tech_life=30,
+                                       tech_life=25,
                                        mini_grid=True,
                                        hybrid=True)
 
         mg_wind_hybrid_calc = Technology(om_of_td_lines=0.02,
                                          distribution_losses=0.05,
-                                         connection_cost_per_hh=20,
+                                         connection_cost_per_hh=100,
                                          capacity_factor=0.5,
-                                         tech_life=30,
+                                         tech_life=20,
                                          mini_grid=True,
                                          hybrid=True)
 
         mg_hydro_calc = Technology(om_of_td_lines=0.02,
                                    distribution_losses=0.05,
-                                   connection_cost_per_hh=20,
+                                   connection_cost_per_hh=100,
                                    capacity_factor=0.5,
-                                   tech_life=35,
-                                   capital_cost={float("inf"): 5000},
+                                   tech_life=30,
+                                   capital_cost={float("inf"): 3000},
                                    om_costs=0.03,
                                    mini_grid=True)
 
@@ -216,7 +223,7 @@ def scenario(specs_path, calibrated_csv_path, results_folder, summary_folder):
                                 capital_cost={float("inf"): 2700,
                                               1: 2700,
                                               0.200: 2700,
-                                              0.080: 2625,
+                                              0.080: 2600,
                                               0.030: 2200,
                                               0.006: 9200
                                               },
@@ -285,8 +292,8 @@ def scenario(specs_path, calibrated_csv_path, results_folder, summary_folder):
 
             grid_calc = onsseter.grid_option(grid_option, auto_intensification, year, distribution_om=0.02,
                                              distribution_losses=0.05, grid_losses=0.10,
-                                             connection_cost_per_household=20,
-                                             grid_power_plants_capital_cost=2000, start_year=start_year,
+                                             connection_cost_per_household=100,
+                                             grid_power_plants_capital_cost=2248, start_year=start_year,
                                              grid_generation_cost=grid_price,
                                              national_HV_transmission_cost=0)
 
@@ -319,12 +326,14 @@ def scenario(specs_path, calibrated_csv_path, results_folder, summary_folder):
 
             onsseter.calc_summaries(df_summary, sumtechs, year, grid_option, auto_intensification)
 
+
         for i in range(len(onsseter.df.columns)):
             if onsseter.df.iloc[:, i].dtype == 'float64':
                 onsseter.df.iloc[:, i] = pd.to_numeric(onsseter.df.iloc[:, i], downcast='float')
             elif onsseter.df.iloc[:, i].dtype == 'int64':
                 onsseter.df.iloc[:, i] = pd.to_numeric(onsseter.df.iloc[:, i], downcast='signed')
 
+        # Export result as csv
         df_summary.to_csv(summary_csv, index=sumtechs)
         onsseter.df.to_csv(settlements_out_csv, index=False)
 

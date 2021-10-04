@@ -4,12 +4,12 @@ from typing import Dict
 import scipy.spatial
 import os
 ## TODO activate if you are running via jupyter notebook
-from onsset.hybrids_pv import read_environmental_data, pv_diesel_hybrid
-from onsset.hybrids_wind import read_wind_environmental_data, wind_diesel_hybrid
+#from onsset.hybrids_pv import read_environmental_data, pv_diesel_hybrid
+#from onsset.hybrids_wind import read_wind_environmental_data, wind_diesel_hybrid
 
 ## TODO activate if you are running via IDE (PyCharm)
-#from hybrids_pv import read_environmental_data, pv_diesel_hybrid
-#from hybrids_wind import read_wind_environmental_data, wind_diesel_hybrid
+from hybrids_pv import read_environmental_data, pv_diesel_hybrid
+from hybrids_wind import read_wind_environmental_data, wind_diesel_hybrid
 
 import numpy as np
 import pandas as pd
@@ -159,9 +159,9 @@ class Technology:
         self.om_of_td_lines = om_of_td_lines
 
     @classmethod
-    def set_default_values(cls, base_year, start_year, end_year, discount_rate, hv_line_type=69, hv_line_cost=43000,
-                           mv_line_type=11, mv_line_amperage_limit=8.0, mv_line_cost=9000, lv_line_type=0.240,
-                           lv_line_cost=5000, lv_line_max_length=0.5, service_transf_type=50, service_transf_cost=4200, # ToDo
+    def set_default_values(cls, base_year, start_year, end_year, discount_rate, hv_line_type=66, hv_line_cost=43000,
+                           mv_line_type=11, mv_line_amperage_limit=8.0, mv_line_cost=22000, lv_line_type=0.240,
+                           lv_line_cost=12000, lv_line_max_length=0.5, service_transf_type=50, service_transf_cost=4250, # ToDo
                            max_nodes_per_serv_trans=300, mv_lv_sub_station_type=400, mv_lv_sub_station_cost=10000,
                            mv_mv_sub_station_cost=10000, hv_lv_sub_station_type=10000, hv_lv_sub_station_cost=25000,
                            hv_mv_sub_station_cost=25000, power_factor=0.9, load_moment=9643):
@@ -1005,7 +1005,8 @@ class SettlementProcessor:
 
         self.df[SET_URBAN] = 0
         self.df.loc[self.df[SET_POP_CALIB] > major_urban_centers_pop, SET_URBAN] = 2
-        self.df.loc[(self.df[SET_POP_CALIB] > other_urban_areas_pop) & (self.df[SET_ROAD_DIST] < other_urban_areas_road_dist), SET_URBAN] = 2
+        #self.df.loc[(self.df[SET_POP_CALIB] > other_urban_areas_pop) & (self.df[SET_ROAD_DIST] < other_urban_areas_road_dist), SET_URBAN] = 2
+        self.df.loc[(self.df[SET_POP_CALIB] > other_urban_areas_pop) & (self.df['MJTownDist'] < other_urban_areas_road_dist), SET_URBAN] = 2
 
         # Get the calculated urban ratio, and limit it to within reasonable boundaries
         pop_urb = self.df.loc[self.df[SET_URBAN] > 1, SET_POP_CALIB].sum()
@@ -1050,8 +1051,9 @@ class SettlementProcessor:
         self.df[SET_ELEC_CURRENT] = 0
         self.df[SET_ELEC_FINAL_CODE + "{}".format(start_year)] = 99
 
-        self.df.loc[self.df['MGDist'] <= 0.5, SET_ELEC_CURRENT] = 1
-        self.df.loc[self.df['MGDist'] == 0, SET_ELEC_FINAL_CODE + "{}".format(start_year)] = 4
+        # Calibrated electrified population new ESPs
+        self.df.loc[self.df['MGDist'] <= 1.5, SET_ELEC_CURRENT] = 1
+        self.df.loc[self.df['MGDist'] <= 1.5, SET_ELEC_FINAL_CODE + "{}".format(start_year)] = 4
 
         self.df.loc[self.df[SET_ELEC_CURRENT] == 1, SET_ELEC_POP_CALIB] = self.df[SET_POP_CALIB] * electrification_share
         elec_pop_households = round((self.df[SET_ELEC_POP_CALIB] / self.df[SET_NUM_PEOPLE_PER_HH]).sum())
@@ -1068,6 +1070,9 @@ class SettlementProcessor:
                     connection_cost_per_household, grid_power_plants_capital_cost, start_year,
                     grid_generation_cost, national_HV_transmission_cost):
 
+        # Add column with HV lines for proper filtering, before altering based on grid option (for Somaliland)
+        self.df["HV_line_filter"] = self.df[SET_HV_DIST_PLANNED]
+
         if (option == 1) & (intensification_dist == 0):
             self.df[SET_MV_DIST_CURRENT] = 999
             self.df[SET_MV_DIST_PLANNED] = 999
@@ -1082,8 +1087,9 @@ class SettlementProcessor:
             self.df.loc[self.df['MGDist'] == 0, SET_ELEC_FINAL_CODE + "{}".format(start_year)] = 1
             grid_cost = self.df.loc[self.df[SET_ELEC_CURRENT] == 1, 'PVHybridGenLCOE' + "{}".format(year)].mean()
         elif option == 2:
-            self.df[SET_MV_DIST_CURRENT] = self.df[SET_SUBSTATION_DIST]
-            self.df[SET_MV_DIST_PLANNED] = self.df[SET_SUBSTATION_DIST]
+            #RUN_PARAM Update columns used based on data at hand
+            self.df[SET_MV_DIST_CURRENT] = self.df[SET_HV_DIST_PLANNED]
+            self.df[SET_MV_DIST_PLANNED] = self.df[SET_HV_DIST_PLANNED]
             #self.df[SET_HV_DIST_CURRENT] = self.df['HVLineDistNational']
             #self.df[SET_HV_DIST_PLANNED] = self.df['HVLineDistNational']
             self.df[SET_HV_DIST_CURRENT] = self.df[SET_HV_DIST_PLANNED]
@@ -1421,6 +1427,7 @@ class SettlementProcessor:
                                    year=year,
                                    time_step=time_step, end_year=end_year, grid_calc=grid_calc)
             intensification_lcoe = new_lcoes.copy(deep=True)
+            # RUN_PARAM Generating cost of existing mini-grid
             intensification_lcoe.loc[(mv_planned < auto_intensification) & (prev_code != 1)] = 0.01
             intensification_lcoe = pd.DataFrame(intensification_lcoe)
             intensification_lcoe.columns = [0]
@@ -1440,7 +1447,7 @@ class SettlementProcessor:
                                                   new_investment=new_investment,
                                                   threshold=threshold)
 
-        # Find the unelectrified settlements where grid can be less costly than off-grid
+        # Find the un-electrified settlements where grid can be less costly than off-grid
         filter_lcoe, filter_investment = self.get_grid_lcoe(0, 0, 0, year, time_step, end_year, grid_calc)
         filter_lcoe = filter_lcoe[0]
         filter_lcoe.loc[electrified == 1] = 99
@@ -1865,8 +1872,8 @@ class SettlementProcessor:
                                   inverter_cost, pv_life, diesel_life, inverter_life, min_pop):
 
         ##TODO change path based on IDE run
-        path_7 = os.path.join('../onsset_Somaliland/Supplementary_files', 'Somaliland_PV.csv')
-        #path_7 = os.path.join('../Supplementary_files', 'Somaliland_PV.csv')
+        #path_7 = os.path.join('../onsset_Somaliland/Supplementary_files', 'Somaliland_PV.csv')
+        path_7 = os.path.join('../Supplementary_files', 'Somaliland_PV.csv')
 
         ghi_curve_7, temp_7 = read_environmental_data(path_7)
 
@@ -2315,6 +2322,9 @@ class SettlementProcessor:
                                                                 SET_LCOE_MG_PV_HYBRID + "{}".format(year),
                                                                 SET_LCOE_MG_WIND_HYBRID + "{}".format(year)]].T.idxmin()
 
+        self.df.loc[self.df[SET_ELEC_FINAL_CODE + "{}".format(year - time_step)] == 4,
+                    SET_MIN_OVERALL + "{}".format(year)] = 'MG_PV_Hybrid' + "{}".format(year)
+
         self.df.loc[self.df[SET_ELEC_FINAL_CODE + "{}".format(year - time_step)] == 1,
                     SET_MIN_OVERALL + "{}".format(year)] = 'Grid' + "{}".format(year)
 
@@ -2471,6 +2481,9 @@ class SettlementProcessor:
         self.df.loc[self.df[SET_ELEC_FINAL_CODE + "{}".format(year)] == 9, SET_NEW_CAPACITY + "{}".format(year)] = \
             (self.df[SET_ENERGY_PER_CELL + "{}".format(year)] * mg_wind_hybrid_capacity)
 
+        # For the row used to integrate HV backbone investment set per capita cost to zero
+        self.df.loc[(self.df['Admin_1'] == 'Transmission_lines'), SET_NEW_CAPACITY + "{}".format(year)] = 0
+
     def online_summaries(self, start_year, intermediate_year, end_year, option, national_HV_backbone_investment, intensification):
         self.df['Buildings' + '{}'.format(start_year)] = np.round(self.df['Buildings'])
         self.df['Buildings' + '{}'.format(intermediate_year)] = np.round(
@@ -2540,7 +2553,7 @@ class SettlementProcessor:
             # TODO put on the right HV construction cost in million USD
             self.df.loc[(self.df['Admin_1'] == 'Transmission_lines'), SET_ELEC_FINAL_CODE + "{}".format(year)] = 1
             self.df.loc[
-                (self.df['Admin_1'] == 'Transmission_lines'), SET_INVESTMENT_COST + "{}".format(year)] = 1280 * 1000000
+                (self.df['Admin_1'] == 'Transmission_lines'), SET_INVESTMENT_COST + "{}".format(year)] = 81.4 * 1000000
         elif year == 2030:
             self.df.loc[(self.df['Admin_1'] == 'Transmission_lines'), SET_ELEC_FINAL_CODE + "{}".format(2025)] = 1
             self.df.loc[(self.df['Admin_1'] == 'Transmission_lines'), SET_ELEC_FINAL_CODE + "{}".format(2030)] = 1
@@ -2666,33 +2679,33 @@ class SettlementProcessor:
                                                 [SET_INVESTMENT_COST + "{}".format(year)])
         # This changes the technology codes to better visualize them on the visualization platform
         # Change expanded mini-grid code
-        if (grid_option == 1) & (auto_intensification > 0) & (year == 2030):
+        if (grid_option == 1) & (auto_intensification >= 0) & (year == 2030):
             self.df.loc[self.df[SET_ELEC_FINAL_CODE + "2025"] == 1, SET_ELEC_FINAL_CODE + "2025"] = 2
             self.df.loc[self.df[SET_ELEC_FINAL_CODE + "2030"] == 1, SET_ELEC_FINAL_CODE + "2030"] = 2
-            self.df.loc[self.df[SET_ELEC_FINAL_CODE + "2020"] == 1, SET_ELEC_FINAL_CODE + "2020"] = 2
+            self.df.loc[self.df[SET_ELEC_FINAL_CODE + "2020"] == 1, SET_ELEC_FINAL_CODE + "2020"] = 4
         # Change MG Hydro code
         if year == 2030:
-            self.df.loc[(self.df[SET_ELEC_FINAL_CODE + "2020"] == 7), SET_ELEC_FINAL_CODE + "2020"] = 6
+            #self.df.loc[(self.df[SET_ELEC_FINAL_CODE + "2020"] == 7), SET_ELEC_FINAL_CODE + "2020"] = 6
             self.df.loc[(self.df[SET_ELEC_FINAL_CODE + "2025"] == 7), SET_ELEC_FINAL_CODE + "2025"] = 6
             self.df.loc[(self.df[SET_ELEC_FINAL_CODE + "2030"] == 7), SET_ELEC_FINAL_CODE + "2030"] = 6
         # Change SA PV code
         if year == 2030:
-            self.df.loc[(self.df[SET_ELEC_FINAL_CODE + "2020"] == 3), SET_ELEC_FINAL_CODE + "2020"] = 7
+            #self.df.loc[(self.df[SET_ELEC_FINAL_CODE + "2020"] == 3), SET_ELEC_FINAL_CODE + "2020"] = 7
             self.df.loc[(self.df[SET_ELEC_FINAL_CODE + "2025"] == 3), SET_ELEC_FINAL_CODE + "2025"] = 7
             self.df.loc[(self.df[SET_ELEC_FINAL_CODE + "2030"] == 3), SET_ELEC_FINAL_CODE + "2030"] = 7
         # Change MG Diesel code
         if year == 2030:
-            self.df.loc[(self.df[SET_ELEC_FINAL_CODE + "2020"] == 4), SET_ELEC_FINAL_CODE + "2020"] = 3
+            self.df.loc[(self.df[SET_ELEC_FINAL_CODE + "2020"] == 4), SET_ELEC_FINAL_CODE + "2020"] = 4
             self.df.loc[(self.df[SET_ELEC_FINAL_CODE + "2025"] == 4), SET_ELEC_FINAL_CODE + "2025"] = 3
             self.df.loc[(self.df[SET_ELEC_FINAL_CODE + "2030"] == 4), SET_ELEC_FINAL_CODE + "2030"] = 3
         # Change PV hybrid code
         if year == 2030:
-            self.df.loc[(self.df[SET_ELEC_FINAL_CODE + "2020"] == 8), SET_ELEC_FINAL_CODE + "2020"] = 4
+            #self.df.loc[(self.df[SET_ELEC_FINAL_CODE + "2020"] == 8), SET_ELEC_FINAL_CODE + "2020"] = 4
             self.df.loc[(self.df[SET_ELEC_FINAL_CODE + "2025"] == 8), SET_ELEC_FINAL_CODE + "2025"] = 4
             self.df.loc[(self.df[SET_ELEC_FINAL_CODE + "2030"] == 8), SET_ELEC_FINAL_CODE + "2030"] = 4
         # Change Wind hybrid code
         if year == 2030:
-            self.df.loc[(self.df[SET_ELEC_FINAL_CODE + "2020"] == 9), SET_ELEC_FINAL_CODE + "2020"] = 5
+            #self.df.loc[(self.df[SET_ELEC_FINAL_CODE + "2020"] == 9), SET_ELEC_FINAL_CODE + "2020"] = 5
             self.df.loc[(self.df[SET_ELEC_FINAL_CODE + "2025"] == 9), SET_ELEC_FINAL_CODE + "2025"] = 5
             self.df.loc[(self.df[SET_ELEC_FINAL_CODE + "2030"] == 9), SET_ELEC_FINAL_CODE + "2030"] = 5
         if year == 2030:
@@ -2703,5 +2716,8 @@ class SettlementProcessor:
             self.df['CostPerConnection2030'] = self.df['InvestmentCost2030'] / (self.df['NewConnections2030'] / self.df['NumPeoplePerHH'])
             self.df['CostPerConnection'] = (self.df['InvestmentCost2025'] + self.df['InvestmentCost2030']) / ((self.df['NewConnections2025'] / self.df['NumPeoplePerHH']) + (self.df['NewConnections2030'] / self.df['NumPeoplePerHH']))
 
-
+            # For the row used to integrate HV backbone investment set per capita cost to zero
+            self.df.loc[(self.df['Admin_1'] == 'Transmission_lines'), ['CostPerConnection2025']] = 0
+            self.df.loc[(self.df['Admin_1'] == 'Transmission_lines'), ['CostPerConnection2030']] = 0
+            self.df.loc[(self.df['Admin_1'] == 'Transmission_lines'), ['CostPerConnection']] = 0
 
